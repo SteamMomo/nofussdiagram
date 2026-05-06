@@ -132,6 +132,49 @@
     --muted: #525252;
     --cyan: #22d3ee;
     --red: #f87171;
+    --editor-bg: #0f0f0f;
+    --editor-text: #c9d1d9;
+    --preview-bg: #0a0a0a;
+    --preview-grid: #1f1f1f;
+    --toast-bg: #1a1a1a;
+  }
+
+  /* ===== LIGHT THEME ===== */
+  body.light {
+    --bg: #eae5dc;
+    --surface: #f0ebe1;
+    --surface2: #e4dfd5;
+    --border: #d5cec4;
+    --border2: #c4bcb2;
+    --text: #1e1a16;
+    --muted: #8a7e72;
+    --editor-bg: #f5f0e6;
+    --editor-text: #2a2318;
+    --preview-bg: #e8e3d9;
+    --preview-grid: #d2cbc0;
+    --toast-bg: #f0ebe1;
+    color-scheme: light;
+  }
+
+  body.light #preview-wrap {
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.03) 0%, transparent 50%),
+      linear-gradient(var(--preview-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--preview-grid) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+    background-color: var(--preview-bg);
+  }
+
+  body.light .toast {
+    border-color: #e4e4e7;
+    color: #18181b;
+  }
+
+  body.light #fs-exit-btn {
+    background: rgba(255,255,255,0.9);
+    border-color: #d4d4d8;
+    color: #52525b;
   }
 
   html, body {
@@ -226,8 +269,8 @@
     width: 100%;
     height: 100%;
     resize: none;
-    background: var(--surface);
-    color: #c9d1d9;
+    background: var(--editor-bg);
+    color: var(--editor-text);
     border: none;
     outline: none;
     padding: 16px;
@@ -311,10 +354,10 @@
     background:
       radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.04) 0%, transparent 60%),
       radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.03) 0%, transparent 50%),
-      linear-gradient(#1f1f1f 1px, transparent 1px),
-      linear-gradient(90deg, #1f1f1f 1px, transparent 1px);
+      linear-gradient(var(--preview-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--preview-grid) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
-    background-color: #0a0a0a;
+    background-color: var(--preview-bg);
   }
 
   #preview-container {
@@ -479,8 +522,8 @@
   }
 
   .toast {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
+    background: var(--toast-bg);
+    border: 1px solid var(--border2);
     border-left: 3px solid var(--accent);
     color: var(--text);
     padding: 10px 16px;
@@ -790,6 +833,11 @@
       <span style="border:1px solid #2a2a2a;padding:2px 6px;border-radius:4px;">Ctrl+Enter</span>
       <span>to render</span>
     </div>
+    <!-- Site theme toggle -->
+    <button id="site-theme-btn" onclick="toggleSiteTheme()" title="Toggle light/dark mode" class="btn btn-icon" style="margin-left:8px;">
+      <svg id="site-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="site-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
   </header>
 
   <!-- ===== MOBILE TABS ===== -->
@@ -843,6 +891,13 @@
 
       <!-- Editor controls (desktop only) -->
       <div id="editor-controls">
+        <!-- Tip banner -->
+        <div id="tip-banner" style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;background:rgba(234,179,8,0.07);border:1px solid rgba(234,179,8,0.2);font-size:11px;color:#a3a3a3;line-height:1.5;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>If text is hard to see, try a different template or adjust your diagram's colors.</span>
+          <button onclick="document.getElementById('tip-banner').style.display='none'" style="background:none;border:none;color:#525252;cursor:pointer;padding:0;flex-shrink:0;line-height:1;font-size:14px;margin-left:auto;" title="Dismiss">×</button>
+        </div>
+
         <!-- Ad Slot 2: 300x250 -->
         <div class="ad-slot" style="height:120px;width:100%;">
           <div class="ad-slot-label">
@@ -1119,6 +1174,7 @@ let debounceTimer = null;
 let isSequenceDiagram = false;
 let sequenceParticipants = []; // [{ name, el }]
 let overlayRafId = null;
+let siteTheme = 'dark'; // 'dark' | 'light'
 
 // ===========================
 // INIT MERMAID
@@ -1230,6 +1286,39 @@ function initPanZoom() {
 
 function updateZoomBadge(zoom) {
   document.getElementById('zoom-badge').textContent = Math.round(zoom * 100) + '%';
+}
+
+// ===========================
+// SITE THEME TOGGLE
+// ===========================
+function toggleSiteTheme() {
+  siteTheme = siteTheme === 'dark' ? 'light' : 'dark';
+  const isLight = siteTheme === 'light';
+
+  // Toggle body class — all CSS variables update automatically
+  document.body.classList.toggle('light', isLight);
+
+  // Swap header icon: moon = switch to dark, sun = switch to light
+  document.getElementById('site-icon-moon').style.display = isLight ? 'none' : '';
+  document.getElementById('site-icon-sun').style.display  = isLight ? '' : 'none';
+
+  // Re-initialize Mermaid with matching diagram theme and re-render
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isLight ? 'default' : 'dark',
+    securityLevel: 'loose',
+    fontFamily: 'JetBrains Mono, monospace',
+    themeVariables: isLight ? {} : {
+      background: 'transparent',
+      mainBkg: '#1a1a2e',
+      nodeBorder: '#7c3aed',
+      clusterBkg: '#0f0f1a',
+      titleColor: '#e8e8e8',
+      edgeLabelBackground: '#0f0f0f',
+      lineColor: '#a855f7',
+    }
+  });
+  renderDiagram();
 }
 
 // ===========================
