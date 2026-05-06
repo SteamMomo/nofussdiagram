@@ -1092,19 +1092,19 @@ const TEMPLATES = {
         string schedule
     }
     ADOPTION {
-        date adoptionDate
+        string adoptionDate
         string status
     }
     FAMILY {
         string familyName
         string homeType
-        bool hasGarden
+        boolean hasGarden
     }
 
-    SHELTER ||--o{ ANIMAL : cares for
-    VOLUNTEER }o--|| SHELTER : works at
-    VOLUNTEER }o--o{ ANIMAL : looks after
-    ANIMAL ||--o| ADOPTION : leads to
+    SHELTER ||--o{ ANIMAL : "cares for"
+    VOLUNTEER }o--|| SHELTER : "works at"
+    VOLUNTEER }o--o{ ANIMAL : "looks after"
+    ANIMAL ||--o| ADOPTION : "leads to"
     FAMILY ||--o{ ADOPTION : completes
     FAMILY ||--o{ ANIMAL : adopts`
 };
