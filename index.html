@@ -647,7 +647,7 @@
     border: 1px solid rgba(168,85,247,0.3);
     color: #c084fc;
     /* smooth slide as pan/zoom updates position */
-    transition: left 0.06s linear, opacity 0.2s;
+    transition: opacity 0.2s;
   }
 
   .participant-label.clamped {
@@ -1114,6 +1114,7 @@ let renderCount = 0;
 let debounceTimer = null;
 let isSequenceDiagram = false;
 let sequenceParticipants = []; // [{ name, el }]
+let overlayRafId = null;
 
 // ===========================
 // INIT MERMAID
@@ -1210,10 +1211,6 @@ function initPanZoom() {
       onZoom: (scale) => {
         currentZoom = scale;
         updateZoomBadge(scale);
-        updateParticipantOverlay();
-      },
-      onPan: () => {
-        updateParticipantOverlay();
       }
     });
     currentZoom = panZoomInstance.getZoom();
@@ -1259,6 +1256,22 @@ function parseParticipantNames(code) {
   }
 
   return names;
+}
+
+function startOverlayTracking() {
+  if (overlayRafId) return;
+  function loop() {
+    updateParticipantOverlay();
+    overlayRafId = requestAnimationFrame(loop);
+  }
+  overlayRafId = requestAnimationFrame(loop);
+}
+
+function stopOverlayTracking() {
+  if (overlayRafId) {
+    cancelAnimationFrame(overlayRafId);
+    overlayRafId = null;
+  }
 }
 
 function buildParticipantOverlay(svgEl) {
@@ -1322,8 +1335,11 @@ function buildParticipantOverlay(svgEl) {
   overlay.style.display = 'block';
   badge.classList.add('active');
 
-  // Use setTimeout so the labels have painted and offsetWidth is non-zero.
-  setTimeout(updateParticipantOverlay, 60);
+  // Wait one frame for labels to paint, then start the 60fps tracking loop.
+  setTimeout(() => {
+    updateParticipantOverlay();
+    startOverlayTracking();
+  }, 60);
 }
 
 function updateParticipantOverlay() {
@@ -1357,6 +1373,7 @@ function updateParticipantOverlay() {
 }
 
 function clearParticipantOverlay() {
+  stopOverlayTracking();
   sequenceParticipants = [];
   const overlay = document.getElementById('participant-overlay');
   overlay.innerHTML = '';
