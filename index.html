@@ -1465,62 +1465,54 @@ function downloadPNG() {
   const svgEl = getSVGElement();
   if (!svgEl) { showToast('No diagram to export', 'error'); return; }
 
-  // Clone so we can modify without affecting the live diagram
-  const clone = svgEl.cloneNode(true);
-
-  // svg-pan-zoom wraps content in a <g class="svg-pan-zoom_viewport"> and applies
-  // a translate+scale transform to it. Reset that so the export is always
-  // the full diagram centred at origin, regardless of current pan/zoom state.
-  const viewport = clone.querySelector('.svg-pan-zoom_viewport');
-  if (viewport) viewport.setAttribute('transform', '');
-
-  // Set explicit pixel dimensions from the viewBox so the browser knows
-  // how large to render the SVG (avoids the "100%" sizing problem).
+  // Read full diagram dimensions from viewBox (unaffected by pan/zoom state)
   const vb = svgEl.viewBox.baseVal;
-  const padding = 24; // breathing room around the diagram
-  const vbW = vb && vb.width > 0 ? vb.width : 800;
-  const vbH = vb && vb.height > 0 ? vb.height : 600;
-  clone.setAttribute('width', vbW + padding * 2);
-  clone.setAttribute('height', vbH + padding * 2);
-  clone.setAttribute('viewBox', `${-padding} ${-padding} ${vbW + padding * 2} ${vbH + padding * 2}`);
+  const exportW = (vb && vb.width  > 0) ? Math.ceil(vb.width)  : 800;
+  const exportH = (vb && vb.height > 0) ? Math.ceil(vb.height) : 600;
 
+  // Clone and strip the svg-pan-zoom viewport transform so the full
+  // diagram is rendered at origin regardless of current pan/zoom state.
+  const clone = svgEl.cloneNode(true);
+  const vport = clone.querySelector('.svg-pan-zoom_viewport');
+  if (vport) vport.removeAttribute('transform');
+
+  // Set fixed pixel dimensions — without these, browsers return naturalWidth=0
+  // for SVGs loaded via data URL, making the canvas come out tiny.
+  clone.setAttribute('width',  exportW);
+  clone.setAttribute('height', exportH);
+  clone.removeAttribute('style');
+
+  // Use a data URL (more reliable cross-browser than blob URLs for SVG→Image)
   const svgStr = new XMLSerializer().serializeToString(clone);
-  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
+  const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+
+  const scale = 2; // 2× for retina-quality output
+  const canvas = document.createElement('canvas');
+  canvas.width  = exportW * scale;
+  canvas.height = exportH * scale;
+  const ctx = canvas.getContext('2d');
 
   const img = new Image();
   img.onload = () => {
-    const scale = 2; // retina
-    const w = Math.max(img.naturalWidth || 800, 200);
-    const h = Math.max(img.naturalHeight || 600, 200);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = w * scale;
-    canvas.height = h * scale;
-    const ctx = canvas.getContext('2d');
-
-    // Dark background
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(scale, scale);
-    ctx.drawImage(img, 0, 0, w, h);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     canvas.toBlob((blob) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'diagram.png';
+      document.body.appendChild(a); // required for Firefox
       a.click();
-      URL.revokeObjectURL(a.href);
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      }, 100);
       showToast('PNG downloaded');
     }, 'image/png');
-
-    URL.revokeObjectURL(url);
   };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    showToast('Export failed', 'error');
-  };
-  img.src = url;
+  img.onerror = () => showToast('Export failed', 'error');
+  img.src = dataUrl;
 }
 
 // ===========================
