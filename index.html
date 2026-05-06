@@ -139,42 +139,15 @@
     --toast-bg: #1a1a1a;
   }
 
-  /* ===== LIGHT THEME ===== */
-  body.light {
-    --bg: #eae5dc;
-    --surface: #f0ebe1;
-    --surface2: #e4dfd5;
-    --border: #d5cec4;
-    --border2: #c4bcb2;
-    --text: #1e1a16;
-    --muted: #8a7e72;
-    --editor-bg: #f5f0e6;
-    --editor-text: #2a2318;
-    --preview-bg: #e8e3d9;
-    --preview-grid: #d2cbc0;
-    --toast-bg: #f0ebe1;
-    color-scheme: light;
-  }
-
-  body.light #preview-wrap {
+  /* ===== LIGHT DIAGRAM MODE (renderer only) ===== */
+  #preview-wrap.diagram-light {
     background:
-      radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.04) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.03) 0%, transparent 50%),
-      linear-gradient(var(--preview-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--preview-grid) 1px, transparent 1px);
+      radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.03) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.02) 0%, transparent 50%),
+      linear-gradient(#ddd8cf 1px, transparent 1px),
+      linear-gradient(90deg, #ddd8cf 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
-    background-color: var(--preview-bg);
-  }
-
-  body.light .toast {
-    border-color: #e4e4e7;
-    color: #18181b;
-  }
-
-  body.light #fs-exit-btn {
-    background: rgba(255,255,255,0.9);
-    border-color: #d4d4d8;
-    color: #52525b;
+    background-color: #f0ebe1;
   }
 
   html, body {
@@ -833,11 +806,6 @@
       <span style="border:1px solid #2a2a2a;padding:2px 6px;border-radius:4px;">Ctrl+Enter</span>
       <span>to render</span>
     </div>
-    <!-- Site theme toggle -->
-    <button id="site-theme-btn" onclick="toggleSiteTheme()" title="Toggle light/dark mode" class="btn btn-icon" style="margin-left:8px;">
-      <svg id="site-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <svg id="site-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-    </button>
   </header>
 
   <!-- ===== MOBILE TABS ===== -->
@@ -936,6 +904,15 @@
         <button class="btn btn-icon" id="fullscreen-btn" onclick="toggleFullscreen()" title="Fullscreen (F)">
           <svg id="fs-icon-enter" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
           <svg id="fs-icon-exit" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+        </button>
+
+        <div class="divider"></div>
+
+        <!-- Diagram theme toggle -->
+        <button class="btn" id="diagram-theme-btn" onclick="toggleDiagramTheme()" title="Toggle diagram light/dark theme">
+          <svg id="diag-icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg id="diag-icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <span id="diag-theme-label">Dark</span>
         </button>
 
         <div class="divider"></div>
@@ -1174,25 +1151,16 @@ let debounceTimer = null;
 let isSequenceDiagram = false;
 let sequenceParticipants = []; // [{ name, el }]
 let overlayRafId = null;
-let siteTheme = 'dark'; // 'dark' | 'light'
+let diagramTheme = 'default'; // 'default' (light) | 'dark'
 
 // ===========================
 // INIT MERMAID
 // ===========================
 mermaid.initialize({
   startOnLoad: false,
-  theme: 'dark',
+  theme: 'default',
   securityLevel: 'loose',
   fontFamily: 'JetBrains Mono, monospace',
-  themeVariables: {
-    background: 'transparent',
-    mainBkg: '#1a1a2e',
-    nodeBorder: '#7c3aed',
-    clusterBkg: '#0f0f1a',
-    titleColor: '#e8e8e8',
-    edgeLabelBackground: '#0f0f0f',
-    lineColor: '#a855f7',
-  }
 });
 
 // ===========================
@@ -1289,23 +1257,24 @@ function updateZoomBadge(zoom) {
 }
 
 // ===========================
-// SITE THEME TOGGLE
+// DIAGRAM THEME TOGGLE
 // ===========================
-function toggleSiteTheme() {
-  siteTheme = siteTheme === 'dark' ? 'light' : 'dark';
-  const isLight = siteTheme === 'light';
+function toggleDiagramTheme() {
+  diagramTheme = diagramTheme === 'default' ? 'dark' : 'default';
+  const isLight = diagramTheme === 'default';
 
-  // Toggle body class — all CSS variables update automatically
-  document.body.classList.toggle('light', isLight);
+  // Update preview background
+  document.getElementById('preview-wrap').classList.toggle('diagram-light', isLight);
 
-  // Swap header icon: moon = switch to dark, sun = switch to light
-  document.getElementById('site-icon-moon').style.display = isLight ? 'none' : '';
-  document.getElementById('site-icon-sun').style.display  = isLight ? '' : 'none';
+  // Swap button icon: sun shown when currently light (click to go dark), moon when dark
+  document.getElementById('diag-icon-sun').style.display  = isLight ? '' : 'none';
+  document.getElementById('diag-icon-moon').style.display = isLight ? 'none' : '';
+  document.getElementById('diag-theme-label').textContent = isLight ? 'Dark' : 'Light';
 
-  // Re-initialize Mermaid with matching diagram theme and re-render
+  // Re-initialize Mermaid with new theme and re-render
   mermaid.initialize({
     startOnLoad: false,
-    theme: isLight ? 'default' : 'dark',
+    theme: diagramTheme,
     securityLevel: 'loose',
     fontFamily: 'JetBrains Mono, monospace',
     themeVariables: isLight ? {} : {
@@ -1605,7 +1574,7 @@ async function downloadPNG() {
 
     const img = new Image();
     img.onload = () => {
-      ctx.fillStyle = '#0a0a0a';
+      ctx.fillStyle = diagramTheme === 'default' ? '#f5f0e6' : '#0a0a0a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -1800,6 +1769,8 @@ window.addEventListener('resize', () => {
 // BOOT WITH FLOWCHART
 // ===========================
 window.addEventListener('load', () => {
+  // Default to light diagram theme
+  document.getElementById('preview-wrap').classList.add('diagram-light');
   document.getElementById('editor').value = TEMPLATES.flowchart;
   renderDiagram();
 });
