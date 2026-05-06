@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NoFussDiagram — Mermaid Diagram Editor</title>
+<meta name="description" content="Free online Mermaid.js diagram editor with live preview, pan & zoom, and PNG/SVG export." />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Mermaid -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+<!-- svg-pan-zoom -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Plus Jakarta Sans', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+        colors: {
+          bg: '#080808',
+          surface: '#0f0f0f',
+          surface2: '#151515',
+          border: '#1f1f1f',
+          border2: '#2a2a2a',
+          accent: '#a855f7',
+          'accent-dim': '#7c3aed',
+          'accent-glow': 'rgba(168,85,247,0.15)',
+          cyan: '#22d3ee',
+          muted: '#525252',
+          'text-primary': '#e8e8e8',
+          'text-secondary': '#a3a3a3',
+        },
+      }
+    }
+  }
+</script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --accent: #a855f7;
+    --accent-dim: #7c3aed;
+    --accent-glow: rgba(168,85,247,0.18);
+    --bg: #080808;
+    --surface: #0f0f0f;
+    --surface2: #151515;
+    --border: #1f1f1f;
+    --border2: #2a2a2a;
+    --text: #e8e8e8;
+    --muted: #525252;
+    --cyan: #22d3ee;
+    --red: #f87171;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+  /* ===== LAYOUT ===== */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  #header {
+    height: 52px;
+    min-height: 52px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    background: var(--surface);
+    z-index: 50;
+  }
+
+  #main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  #left-pane {
+    width: 50%;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  #right-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #footer {
+    min-height: 60px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    flex-shrink: 0;
+  }
+
+  /* ===== EDITOR ===== */
+  #editor-toolbar {
+    height: 46px;
+    min-height: 46px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+
+  #editor-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #editor {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    background: var(--surface);
+    color: #c9d1d9;
+    border: none;
+    outline: none;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    tab-size: 2;
+    caret-color: var(--accent);
+    overflow: auto;
+  }
+
+  #editor::selection {
+    background: rgba(168,85,247,0.25);
+  }
+
+  /* Line numbers gutter effect */
+  #editor-wrap::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent-dim), transparent 60%);
+    opacity: 0.4;
+  }
+
+  #editor-controls {
+    flex-shrink: 0;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ===== ERROR BANNER ===== */
+  #error-banner {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(239,68,68,0.1);
+    border-top: 1px solid rgba(239,68,68,0.3);
+    color: #fca5a5;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 20;
+    max-height: 80px;
+    overflow: hidden;
+  }
+
+  #error-banner.visible {
+    transform: translateY(0);
+  }
+
+  /* ===== PREVIEW ===== */
+  #preview-toolbar {
+    height: 46px;
+    min-height: 46px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 4px;
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+
+  #preview-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.03) 0%, transparent 50%),
+      linear-gradient(#1f1f1f 1px, transparent 1px),
+      linear-gradient(90deg, #1f1f1f 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+    background-color: #0a0a0a;
+  }
+
+  #preview-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #diagram-output {
+    width: 100%;
+    height: 100%;
+  }
+
+  #diagram-output svg {
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  /* Empty state */
+  #empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    opacity: 0.35;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text-secondary, #a3a3a3);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    outline: none;
+  }
+
+  .btn:hover {
+    border-color: var(--border2);
+    background: #1e1e1e;
+    color: var(--text);
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-icon {
+    padding: 6px;
+    border-radius: 6px;
+  }
+
+  .btn-accent {
+    background: var(--accent-glow);
+    border-color: rgba(168,85,247,0.35);
+    color: #c084fc;
+  }
+
+  .btn-accent:hover {
+    background: rgba(168,85,247,0.22);
+    border-color: rgba(168,85,247,0.5);
+    color: #d8b4fe;
+    box-shadow: 0 0 12px rgba(168,85,247,0.15);
+  }
+
+  .btn svg { flex-shrink: 0; }
+
+  .divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border2);
+    margin: 0 2px;
+    flex-shrink: 0;
+  }
+
+  /* ===== SELECT ===== */
+  .select-styled {
+    appearance: none;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 6px 28px 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+
+  .select-styled:hover { border-color: #3a3a3a; }
+  .select-styled:focus { border-color: var(--accent); }
+  .select-styled option { background: #1a1a1a; }
+
+  /* ===== AD SLOTS ===== */
+  .ad-slot {
+    border: 1px dashed #2d2d2d;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.015);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: #3d3d3d;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ad-slot::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 8px,
+      rgba(255,255,255,0.01) 8px,
+      rgba(255,255,255,0.01) 9px
+    );
+  }
+
+  .ad-slot-label {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* ===== TOAST ===== */
+  #toast-container {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  .toast {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-left: 3px solid var(--accent);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: auto;
+  }
+
+  .toast.removing {
+    animation: toastOut 0.25s ease forwards;
+  }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+
+  @keyframes toastOut {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(20px) scale(0.95); }
+  }
+
+  /* ===== MOBILE TABS ===== */
+  #mobile-tabs {
+    display: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ===== LOGO ===== */
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--accent-dim), var(--cyan));
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ===== SECTION LABEL ===== */
+  .pane-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    html, body { overflow: hidden; }
+
+    #app { height: 100dvh; }
+
+    #mobile-tabs { display: flex; }
+
+    #main {
+      flex-direction: column;
+    }
+
+    #left-pane {
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      display: none;
+    }
+
+    #left-pane.mobile-active { display: flex; height: calc(100dvh - 52px - 45px - 60px); }
+
+    #right-pane {
+      display: none;
+    }
+
+    #right-pane.mobile-active { display: flex; flex: 1; }
+
+    #editor-controls { display: none; }
+
+    #footer .ad-slot { max-width: 100%; }
+  }
+
+  /* ===== ZOOM BADGE ===== */
+  #zoom-badge {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    pointer-events: none;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Render counter hidden element for fresh IDs */
+  #render-counter { display: none; }
+
+  /* Mermaid override for dark theme */
+  #diagram-output .mermaid { background: transparent !important; }
+  #diagram-output svg { background: transparent !important; }
+
+  /* ===== SEQUENCE PARTICIPANT OVERLAY ===== */
+  #participant-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    z-index: 15;
+    pointer-events: none;
+    /* gradient so the overlay fades into the diagram below */
+    background: linear-gradient(to bottom, rgba(8,8,8,0.92) 55%, transparent 100%);
+  }
+
+  #participant-overlay::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(168,85,247,0.2) 20%, rgba(168,85,247,0.2) 80%, transparent);
+  }
+
+  .participant-label {
+    position: absolute;
+    top: 7px;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    white-space: nowrap;
+    pointer-events: none;
+    background: rgba(168,85,247,0.13);
+    border: 1px solid rgba(168,85,247,0.3);
+    color: #c084fc;
+    /* smooth slide as pan/zoom updates position */
+    transition: left 0.06s linear, opacity 0.2s;
+  }
+
+  .participant-label.clamped {
+    /* tint differently when label has drifted from the true column */
+    background: rgba(34,211,238,0.1);
+    border-color: rgba(34,211,238,0.25);
+    color: #67e8f9;
+  }
+
+  /* Badge that appears in the preview toolbar when sequence mode is active */
+  #seq-mode-badge {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #c084fc;
+    background: rgba(168,85,247,0.1);
+    border: 1px solid rgba(168,85,247,0.25);
+    white-space: nowrap;
+  }
+
+  #seq-mode-badge.active { display: flex; }
+
+  /* ===== FULLSCREEN ===== */
+  #preview-wrap:fullscreen,
+  #preview-wrap:-webkit-full-screen,
+  #preview-wrap:-moz-full-screen {
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.04) 0%, transparent 50%),
+      linear-gradient(#1f1f1f 1px, transparent 1px),
+      linear-gradient(90deg, #1f1f1f 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+    background-color: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #preview-wrap.is-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9998 !important;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(34,211,238,0.04) 0%, transparent 50%),
+      linear-gradient(#1f1f1f 1px, transparent 1px),
+      linear-gradient(90deg, #1f1f1f 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+    background-color: #0a0a0a;
+  }
+
+  #fs-exit-btn {
+    display: none;
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 9999;
+    background: rgba(15,15,15,0.9);
+    border: 1px solid #2a2a2a;
+    color: #a3a3a3;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    gap: 7px;
+    backdrop-filter: blur(8px);
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  }
+
+  #fs-exit-btn:hover {
+    background: rgba(30,30,30,0.95);
+    border-color: #3a3a3a;
+    color: #e8e8e8;
+  }
+
+  #fs-hint {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: rgba(10,10,10,0.8);
+    border: 1px solid #2a2a2a;
+    color: #525252;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    backdrop-filter: blur(6px);
+    white-space: nowrap;
+    pointer-events: none;
+    animation: fadeHint 3s ease forwards;
+  }
+
+  @keyframes fadeHint {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+    15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  body.fullscreen-active #fs-exit-btn { display: flex; }
+  body.fullscreen-active #fs-hint { display: block; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===== HEADER ===== -->
+  <header id="header">
+    <div class="logo-mark">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.5-7.5-2 2M7.5 16.5l-2 2m0-14 2 2m9 9 2 2"/>
+      </svg>
+    </div>
+    <div>
+      <span style="font-weight:700;font-size:14px;letter-spacing:-0.02em;">NoFussDiagram</span>
+      <span style="color:#3d3d3d;font-size:13px;margin-left:6px;font-weight:400;">Mermaid Editor</span>
+    </div>
+    <div style="flex:1"></div>
+    <!-- Keyboard hint -->
+    <div style="color:#3d3d3d;font-size:11px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:8px;" class="hidden sm:flex">
+      <span style="border:1px solid #2a2a2a;padding:2px 6px;border-radius:4px;">Ctrl+Enter</span>
+      <span>to render</span>
+    </div>
+  </header>
+
+  <!-- ===== MOBILE TABS ===== -->
+  <div id="mobile-tabs">
+    <button class="tab-btn active" id="tab-edit" onclick="switchTab('edit')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:-2px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit
+    </button>
+    <button class="tab-btn" id="tab-preview" onclick="switchTab('preview')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      Preview
+    </button>
+  </div>
+
+  <!-- ===== MAIN ===== -->
+  <main id="main">
+
+    <!-- LEFT PANE -->
+    <div id="left-pane" class="mobile-active">
+
+      <!-- Editor toolbar -->
+      <div id="editor-toolbar">
+        <span class="pane-label">Editor</span>
+        <div style="flex:1"></div>
+        <select class="select-styled" id="template-select" onchange="loadTemplate(this.value)">
+          <option value="">Load template…</option>
+          <option value="flowchart">Flowchart</option>
+          <option value="sequence">Sequence Diagram</option>
+          <option value="gantt">Gantt Chart</option>
+          <option value="class">Class Diagram</option>
+          <option value="state">State Diagram</option>
+          <option value="er">ER Diagram</option>
+        </select>
+        <button class="btn btn-accent" onclick="renderDiagram()" title="Render (Ctrl+Enter)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Render
+        </button>
+      </div>
+
+      <!-- Editor area -->
+      <div id="editor-wrap">
+        <textarea id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+          placeholder="Write your Mermaid diagram syntax here…&#10;&#10;Example:&#10;graph TD&#10;    A[Start] --> B[End]"
+        ></textarea>
+        <!-- Error banner -->
+        <div id="error-banner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="error-text">Syntax error in diagram</span>
+        </div>
+      </div>
+
+      <!-- Editor controls (desktop only) -->
+      <div id="editor-controls">
+        <!-- Ad Slot 2: 300x250 -->
+        <div class="ad-slot" style="height:120px;width:100%;">
+          <div class="ad-slot-label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <span>Advertisement</span>
+            <span style="font-size:9px;opacity:0.6">300 × 250</span>
+          </div>
+          <!-- INSERT ADSENSE CODE HERE -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANE -->
+    <div id="right-pane">
+
+      <!-- Preview toolbar -->
+      <div id="preview-toolbar">
+        <span class="pane-label">Preview</span>
+        <div id="seq-mode-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Participants pinned
+        </div>
+        <div style="flex:1"></div>
+
+        <!-- Zoom controls -->
+        <button class="btn btn-icon" onclick="zoomIn()" title="Zoom In">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        </button>
+        <button class="btn btn-icon" onclick="zoomOut()" title="Zoom Out">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        </button>
+        <button class="btn btn-icon" onclick="resetZoom()" title="Reset Zoom">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button class="btn btn-icon" onclick="fitDiagram()" title="Fit to Screen">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
+        <button class="btn btn-icon" id="fullscreen-btn" onclick="toggleFullscreen()" title="Fullscreen (F)">
+          <svg id="fs-icon-enter" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          <svg id="fs-icon-exit" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><line x1="9" y1="7" x2="15" y2="13"/><line x1="15" y1="7" x2="9" y2="13"/></svg>
+        </button>
+
+        <div class="divider"></div>
+
+        <!-- Export controls -->
+        <button class="btn" onclick="copySVG()" title="Copy SVG code">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          SVG
+        </button>
+        <button class="btn" onclick="downloadPNG()" title="Download as PNG">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          PNG
+        </button>
+        <button class="btn btn-accent" onclick="copyMarkdown()" title="Copy Mermaid markdown">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Markdown
+        </button>
+      </div>
+
+      <!-- Diagram output -->
+      <div id="preview-wrap">
+        <div id="preview-container">
+          <div id="diagram-output"></div>
+          <div id="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span style="font-size:14px;font-weight:500;">Write Mermaid syntax to render</span>
+            <span style="font-size:12px;opacity:0.6;">or load a template from the dropdown</span>
+          </div>
+        </div>
+        <div id="zoom-badge">100%</div>
+        <!-- Sticky participant header (sequence diagrams only) -->
+        <div id="participant-overlay"></div>
+      </div>
+
+      <!-- Fullscreen overlay controls -->
+      <button id="fs-exit-btn" onclick="toggleFullscreen()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><line x1="9" y1="7" x2="15" y2="13"/><line x1="15" y1="7" x2="9" y2="13"/></svg>
+        Exit Fullscreen
+        <span style="border:1px solid #2a2a2a;padding:1px 5px;border-radius:3px;font-size:10px;opacity:0.6;font-family:'JetBrains Mono',monospace;">Esc</span>
+      </button>
+      <div id="fs-hint">Press Esc or F to exit fullscreen</div>
+
+    </div>
+  </main>
+
+  <!-- ===== FOOTER (Ad Slot 1) ===== -->
+  <footer id="footer">
+    <div class="ad-slot" style="width:100%;max-width:728px;height:44px;flex-direction:row;gap:10px;">
+      <div class="ad-slot-label" style="flex-direction:row;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <span>Advertisement — 728 × 90</span>
+      </div>
+      <!-- INSERT ADSENSE CODE HERE -->
+    </div>
+  </footer>
+
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<span id="render-counter" data-count="0"></span>
+
+<script>
+// ===========================
+// TEMPLATES
+// ===========================
+const TEMPLATES = {
+  flowchart: `graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B`,
+
+  sequence: `sequenceDiagram
+    participant Alice
+    participant Bob
+    Alice->>John: Hello John, how are you?
+    loop Healthcheck
+        John->>John: Fight against hypochondria
+    end
+    Note right of John: Rational thoughts!
+    John-->>Alice: Great!
+    John->>Bob: How about you?
+    Bob-->>John: Jolly good!`,
+
+  gantt: `gantt
+    title A Gantt Diagram
+    dateFormat  YYYY-MM-DD
+    section Section
+    A task           :a1, 2024-01-01, 30d
+    Another task     :after a1, 20d
+    section Another
+    Task in sec      :2024-01-12, 12d
+    another task     :24d`,
+
+  class: `classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal <|-- Zebra
+    Animal : +int age
+    Animal : +String gender
+    Animal: +isMammal()
+    Animal: +mate()
+    class Duck{
+        +String beakColor
+        +swim()
+        +quack()
+    }`,
+
+  state: `stateDiagram-v2
+    [*] --> Still
+    Still --> [*]
+    Still --> Moving
+    Moving --> Still
+    Moving --> Crash
+    Crash --> [*]`,
+
+  er: `erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    CUSTOMER }|..|{ DELIVERY-ADDRESS : uses`
+};
+
+// ===========================
+// STATE
+// ===========================
+let panZoomInstance = null;
+let currentZoom = 1;
+let renderCount = 0;
+let debounceTimer = null;
+let isSequenceDiagram = false;
+let sequenceParticipants = []; // [{ name, el }]
+
+// ===========================
+// INIT MERMAID
+// ===========================
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+  fontFamily: 'JetBrains Mono, monospace',
+  themeVariables: {
+    background: 'transparent',
+    mainBkg: '#1a1a2e',
+    nodeBorder: '#7c3aed',
+    clusterBkg: '#0f0f1a',
+    titleColor: '#e8e8e8',
+    edgeLabelBackground: '#0f0f0f',
+    lineColor: '#a855f7',
+  }
+});
+
+// ===========================
+// RENDER
+// ===========================
+async function renderDiagram() {
+  const code = document.getElementById('editor').value.trim();
+  const output = document.getElementById('diagram-output');
+  const emptyState = document.getElementById('empty-state');
+  const errorBanner = document.getElementById('error-banner');
+
+  if (!code) {
+    output.innerHTML = '';
+    emptyState.style.display = 'flex';
+    hideError();
+    destroyPanZoom();
+    clearParticipantOverlay();
+    return;
+  }
+
+  emptyState.style.display = 'none';
+  isSequenceDiagram = /^\s*sequenceDiagram/m.test(code);
+
+  try {
+    renderCount++;
+    const id = `mermaid-diagram-${renderCount}-${Date.now()}`;
+
+    // mermaid.render returns { svg }
+    const { svg } = await mermaid.render(id, code);
+
+    output.innerHTML = svg;
+    hideError();
+
+    // Small delay to ensure SVG is in DOM and laid out
+    await new Promise(r => setTimeout(r, 80));
+    initPanZoom();
+
+  } catch (err) {
+    showError(err.message || 'Invalid Mermaid syntax');
+    // Keep last good render if any
+    if (!output.innerHTML) {
+      emptyState.style.display = 'flex';
+    }
+  }
+}
+
+// ===========================
+// PAN / ZOOM
+// ===========================
+function destroyPanZoom() {
+  if (panZoomInstance) {
+    try { panZoomInstance.destroy(); } catch(e) {}
+    panZoomInstance = null;
+  }
+}
+
+function initPanZoom() {
+  destroyPanZoom();
+  const svgEl = document.querySelector('#diagram-output svg');
+  if (!svgEl) return;
+
+  // Ensure SVG fills container properly
+  svgEl.setAttribute('width', '100%');
+  svgEl.setAttribute('height', '100%');
+  svgEl.style.maxWidth = '100%';
+
+  try {
+    panZoomInstance = svgPanZoom(svgEl, {
+      zoomEnabled: true,
+      controlIconsEnabled: false,
+      fit: true,
+      center: true,
+      minZoom: 0.1,
+      maxZoom: 10,
+      zoomScaleSensitivity: 0.3,
+      onZoom: (scale) => {
+        currentZoom = scale;
+        updateZoomBadge(scale);
+        updateParticipantOverlay();
+      },
+      onPan: () => {
+        updateParticipantOverlay();
+      }
+    });
+    currentZoom = panZoomInstance.getZoom();
+    updateZoomBadge(currentZoom);
+  } catch(e) {
+    console.warn('svg-pan-zoom init failed:', e);
+  }
+
+  // Build sticky participant header for sequence diagrams
+  const svgForOverlay = document.querySelector('#diagram-output svg');
+  if (svgForOverlay) buildParticipantOverlay(svgForOverlay);
+}
+
+function updateZoomBadge(zoom) {
+  document.getElementById('zoom-badge').textContent = Math.round(zoom * 100) + '%';
+}
+
+// ===========================
+// SEQUENCE PARTICIPANT OVERLAY
+// ===========================
+// Parse participant display names from the Mermaid source code.
+// Avoids any dependency on Mermaid's internal SVG class names.
+function parseParticipantNames(code) {
+  const names = [];
+  const seen = new Set();
+
+  // Explicit: "participant Alice" or "participant Alice as A" or "actor Bob"
+  const declRe = /^\s*(?:participant|actor)\s+([^\n#]+?)(?:\s+as\s+([^\n#]+?))?[\s]*$/gim;
+  let m;
+  while ((m = declRe.exec(code)) !== null) {
+    const display = (m[2] || m[1]).trim();
+    if (display && !seen.has(display)) { seen.add(display); names.push(display); }
+  }
+
+  // Implicit: infer from arrow lines when no explicit declarations exist
+  if (names.length === 0) {
+    const arrowRe = /^\s*([^:\-+\n]+?)\s*-[-\.]?[-x\)>]+\s*([^:\n]+?)\s*:/gim;
+    while ((m = arrowRe.exec(code)) !== null) {
+      for (const part of [m[1].trim(), m[2].trim()]) {
+        if (part && !seen.has(part)) { seen.add(part); names.push(part); }
+      }
+    }
+  }
+
+  return names;
+}
+
+function buildParticipantOverlay(svgEl) {
+  clearParticipantOverlay();
+  const badge = document.getElementById('seq-mode-badge');
+
+  if (!isSequenceDiagram) { badge.classList.remove('active'); return; }
+
+  const code = document.getElementById('editor').value;
+  const names = parseParticipantNames(code);
+  if (names.length === 0) { badge.classList.remove('active'); return; }
+
+  // Determine SVG coordinate height so we can limit search to top 30% (actor row).
+  let svgH = 0;
+  try {
+    const vb = svgEl.viewBox.baseVal;
+    svgH = (vb && vb.height > 0) ? vb.height : svgEl.getBoundingClientRect().height;
+  } catch(e) {
+    svgH = svgEl.getBoundingClientRect().height;
+  }
+  // If height can't be determined, use a generous absolute fallback
+  const topCutoff = svgH > 0 ? svgH * 0.30 : 200;
+
+  // Collect every text/tspan node in the SVG — we'll match by content + y position.
+  // This is class-name-agnostic and works across Mermaid versions.
+  const allTextNodes = [...svgEl.querySelectorAll('text, tspan')];
+
+  sequenceParticipants = [];
+  const seen = new Set();
+
+  for (const name of names) {
+    if (seen.has(name)) continue;
+
+    // Find the first text/tspan whose trimmed content matches this name
+    // AND whose SVG y-coordinate sits in the actor row at the top.
+    const match = allTextNodes.find(t => {
+      if (t.textContent.trim() !== name) return false;
+      try {
+        const b = t.getBBox();
+        return b.y >= 0 && b.y < topCutoff;
+      } catch(e) { return false; }
+    });
+
+    if (match) {
+      seen.add(name);
+      sequenceParticipants.push({ name, el: match });
+    }
+  }
+
+  if (sequenceParticipants.length === 0) { badge.classList.remove('active'); return; }
+
+  const overlay = document.getElementById('participant-overlay');
+  sequenceParticipants.forEach((p, i) => {
+    const label = document.createElement('div');
+    label.className = 'participant-label';
+    label.id = `seq-label-${i}`;
+    label.textContent = p.name;
+    overlay.appendChild(label);
+  });
+
+  overlay.style.display = 'block';
+  badge.classList.add('active');
+
+  // Use setTimeout so the labels have painted and offsetWidth is non-zero.
+  setTimeout(updateParticipantOverlay, 60);
+}
+
+function updateParticipantOverlay() {
+  if (!isSequenceDiagram || sequenceParticipants.length === 0) return;
+  const wrapEl = document.getElementById('preview-wrap');
+  const wrapRect = wrapEl.getBoundingClientRect();
+  const padding = 8;
+
+  sequenceParticipants.forEach((p, i) => {
+    const label = document.getElementById(`seq-label-${i}`);
+    if (!label || !p.el) return;
+    try {
+      // getBoundingClientRect() on an SVG element accounts for all CSS transforms
+      // applied by svg-pan-zoom, giving us the real screen position.
+      const elRect = p.el.getBoundingClientRect();
+      const centerX = elRect.left + elRect.width / 2 - wrapRect.left;
+      const labelW = label.offsetWidth || 60; // fallback if not yet painted
+
+      const rawLeft = centerX - labelW / 2;
+      const clampedLeft = Math.max(padding, Math.min(wrapRect.width - labelW - padding, rawLeft));
+      label.style.left = clampedLeft + 'px';
+
+      // Cyan tint when the column has panned off-screen but label is clamped to edge
+      label.classList.toggle('clamped', Math.abs(rawLeft - clampedLeft) > 4);
+
+      // Fully hide only when the column is very far off both sides
+      const offscreen = centerX < -(labelW * 3) || centerX > wrapRect.width + labelW * 3;
+      label.style.display = offscreen ? 'none' : '';
+    } catch(e) {}
+  });
+}
+
+function clearParticipantOverlay() {
+  sequenceParticipants = [];
+  const overlay = document.getElementById('participant-overlay');
+  overlay.innerHTML = '';
+  overlay.style.display = 'none';
+}
+
+function zoomIn() {
+  if (panZoomInstance) {
+    panZoomInstance.zoomIn();
+  }
+}
+
+function zoomOut() {
+  if (panZoomInstance) {
+    panZoomInstance.zoomOut();
+  }
+}
+
+function resetZoom() {
+  if (panZoomInstance) {
+    panZoomInstance.resetZoom();
+    panZoomInstance.resetPan();
+    currentZoom = panZoomInstance.getZoom();
+    updateZoomBadge(currentZoom);
+    requestAnimationFrame(updateParticipantOverlay);
+  }
+}
+
+function fitDiagram() {
+  if (panZoomInstance) {
+    panZoomInstance.fit();
+    panZoomInstance.center();
+    currentZoom = panZoomInstance.getZoom();
+    updateZoomBadge(currentZoom);
+    requestAnimationFrame(updateParticipantOverlay);
+  }
+}
+
+// ===========================
+// ERROR HANDLING
+// ===========================
+function showError(msg) {
+  const banner = document.getElementById('error-banner');
+  const text = document.getElementById('error-text');
+  // Clean up mermaid error messages
+  const clean = msg.replace(/\n/g, ' ').replace(/<!--.*?-->/g, '').trim().slice(0, 120);
+  text.textContent = clean || 'Syntax error — check your Mermaid code';
+  banner.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-banner').classList.remove('visible');
+}
+
+// ===========================
+// TEMPLATES
+// ===========================
+function loadTemplate(key) {
+  if (!key) return;
+  const tmpl = TEMPLATES[key];
+  if (tmpl) {
+    document.getElementById('editor').value = tmpl;
+    renderDiagram();
+    document.getElementById('template-select').value = '';
+  }
+}
+
+// ===========================
+// EXPORT FUNCTIONS
+// ===========================
+function getSVGElement() {
+  return document.querySelector('#diagram-output svg');
+}
+
+function copySVG() {
+  const svg = getSVGElement();
+  if (!svg) { showToast('No diagram to copy', 'error'); return; }
+  const svgStr = new XMLSerializer().serializeToString(svg);
+  navigator.clipboard.writeText(svgStr)
+    .then(() => showToast('SVG copied to clipboard'))
+    .catch(() => showToast('Copy failed', 'error'));
+}
+
+function copyMarkdown() {
+  const code = document.getElementById('editor').value.trim();
+  if (!code) { showToast('Nothing to copy', 'error'); return; }
+  const md = '```mermaid\n' + code + '\n```';
+  navigator.clipboard.writeText(md)
+    .then(() => showToast('Markdown copied to clipboard'))
+    .catch(() => showToast('Copy failed', 'error'));
+}
+
+function downloadPNG() {
+  const svgEl = getSVGElement();
+  if (!svgEl) { showToast('No diagram to export', 'error'); return; }
+
+  const svgStr = new XMLSerializer().serializeToString(svgEl);
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2; // retina
+    const w = Math.max(img.naturalWidth || 800, 200);
+    const h = Math.max(img.naturalHeight || 600, 200);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w * scale;
+    canvas.height = h * scale;
+    const ctx = canvas.getContext('2d');
+
+    // Dark background
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, w, h);
+
+    canvas.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'diagram.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('PNG downloaded');
+    }, 'image/png');
+
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    showToast('Export failed', 'error');
+  };
+  img.src = url;
+}
+
+// ===========================
+// TOAST
+// ===========================
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+
+  const icon = type === 'error'
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
+    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+  if (type === 'error') {
+    toast.style.borderLeftColor = '#f87171';
+  }
+
+  toast.innerHTML = icon + message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('removing');
+    setTimeout(() => toast.remove(), 250);
+  }, 2500);
+}
+
+// ===========================
+// MOBILE TABS
+// ===========================
+function switchTab(tab) {
+  const left = document.getElementById('left-pane');
+  const right = document.getElementById('right-pane');
+  const editBtn = document.getElementById('tab-edit');
+  const previewBtn = document.getElementById('tab-preview');
+
+  if (tab === 'edit') {
+    left.classList.add('mobile-active');
+    right.classList.remove('mobile-active');
+    editBtn.classList.add('active');
+    previewBtn.classList.remove('active');
+  } else {
+    left.classList.remove('mobile-active');
+    right.classList.add('mobile-active');
+    previewBtn.classList.add('active');
+    editBtn.classList.remove('active');
+    // Re-init pan zoom after tab switch
+    setTimeout(initPanZoom, 100);
+  }
+}
+
+// ===========================
+// DEBOUNCED INPUT
+// ===========================
+document.getElementById('editor').addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(renderDiagram, 300);
+});
+
+// Ctrl+Enter to force render
+document.getElementById('editor').addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(debounceTimer);
+    renderDiagram();
+  }
+  // Tab key inserts spaces
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const ta = e.target;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    ta.value = ta.value.substring(0, start) + '    ' + ta.value.substring(end);
+    ta.selectionStart = ta.selectionEnd = start + 4;
+  }
+});
+
+// Window resize — re-fit
+// ===========================
+// FULLSCREEN
+// ===========================
+let isFullscreen = false;
+
+function toggleFullscreen() {
+  const wrap = document.getElementById('preview-wrap');
+
+  // Prefer native Fullscreen API; fall back to CSS-only for browsers that block it
+  if (!isFullscreen) {
+    const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen || wrap.mozRequestFullScreen;
+    if (req) {
+      req.call(wrap).catch(() => enableCSSFullscreen(wrap));
+    } else {
+      enableCSSFullscreen(wrap);
+    }
+  } else {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
+    if (exit && (document.fullscreenElement || document.webkitFullscreenElement)) {
+      exit.call(document).catch(() => {});
+    }
+    disableFullscreen(wrap);
+  }
+}
+
+function enableCSSFullscreen(wrap) {
+  wrap.classList.add('is-fullscreen');
+  setFullscreenState(true);
+}
+
+function disableFullscreen(wrap) {
+  wrap.classList.remove('is-fullscreen');
+  setFullscreenState(false);
+}
+
+function setFullscreenState(active) {
+  isFullscreen = active;
+  document.body.classList.toggle('fullscreen-active', active);
+  document.getElementById('fs-icon-enter').style.display = active ? 'none' : '';
+  document.getElementById('fs-icon-exit').style.display = active ? '' : 'none';
+  document.getElementById('fullscreen-btn').title = active ? 'Exit Fullscreen (F / Esc)' : 'Fullscreen (F)';
+  // Re-fit after layout change
+  setTimeout(() => {
+    if (panZoomInstance) {
+      try { panZoomInstance.resize(); panZoomInstance.fit(); panZoomInstance.center(); } catch(e) {}
+    }
+  }, 80);
+}
+
+// Sync when native fullscreen is exited via Esc key (browser-native)
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && isFullscreen) {
+    disableFullscreen(document.getElementById('preview-wrap'));
+    setFullscreenState(false);
+  }
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  if (!document.webkitFullscreenElement && isFullscreen) {
+    disableFullscreen(document.getElementById('preview-wrap'));
+    setFullscreenState(false);
+  }
+});
+
+// Keyboard shortcut: F toggles fullscreen (when editor not focused), Esc exits
+document.addEventListener('keydown', (e) => {
+  if (e.target === document.getElementById('editor')) return;
+  if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    toggleFullscreen();
+  }
+  if (e.key === 'Escape' && isFullscreen) {
+    // Native fullscreen already handles Esc; handle CSS fallback
+    if (!document.fullscreenElement) {
+      disableFullscreen(document.getElementById('preview-wrap'));
+      setFullscreenState(false);
+    }
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (panZoomInstance) {
+    try {
+      panZoomInstance.resize();
+      panZoomInstance.fit();
+      panZoomInstance.center();
+    } catch(e) {}
+  }
+  updateParticipantOverlay();
+});
+
+// ===========================
+// BOOT WITH FLOWCHART
+// ===========================
+window.addEventListener('load', () => {
+  document.getElementById('editor').value = TEMPLATES.flowchart;
+  renderDiagram();
+});
+</script>
+</body>
+</html>
