@@ -951,59 +951,161 @@
 // ===========================
 const TEMPLATES = {
   flowchart: `graph TD
-    A[Start] --> B{Is it working?}
-    B -->|Yes| C[Great!]
-    B -->|No| D[Debug]
-    D --> B`,
+    A[🐣 Egg hatches] --> B{Is it a bird?}
+    B -->|Yes| C[🐦 Teach it to fly]
+    B -->|No| D{Is it a turtle?}
+    D -->|Yes| E[🐢 Teach it to swim slowly]
+    D -->|No| F[🐾 Give it lots of cuddles]
+    C --> G{Did it fly?}
+    G -->|Yes| H[🎉 Celebrate!]
+    G -->|Not yet| C
+    E --> H
+    F --> H`,
 
   sequence: `sequenceDiagram
-    participant Alice
-    participant Bob
-    Alice->>John: Hello John, how are you?
-    loop Healthcheck
-        John->>John: Fight against hypochondria
+    participant Biscuit as 🐶 Biscuit
+    participant Maple as 🐱 Maple
+    participant Pebble as 🐹 Pebble
+    participant Daisy as 🐰 Daisy
+    participant Oliver as 🦉 Oliver
+
+    Biscuit->>Maple: Good morning! Want to go to the park?
+    Maple-->>Biscuit: Absolutely, let me wake up Pebble!
+
+    Maple->>Pebble: Rise and shine, little one!
+    Pebble-->>Maple: Just five more minutes please...
+
+    loop Every morning routine
+        Pebble->>Pebble: Runs on wheel happily
     end
-    Note right of John: Rational thoughts!
-    John-->>Alice: Great!
-    John->>Bob: How about you?
-    Bob-->>John: Jolly good!`,
+
+    Note over Biscuit,Maple: They wait patiently for Pebble
+
+    Pebble-->>Maple: Ok ok, I am ready!
+    Maple->>Daisy: We are heading out, want to join?
+
+    alt Daisy is napping
+        Daisy-->>Maple: Maybe next time, enjoy your walk!
+        Note right of Daisy: Continues her cozy nap
+    else Daisy is awake
+        Daisy-->>Maple: Yes! Let me grab my favourite stick!
+        Daisy->>Oliver: Oliver, park trip — are you in?
+        Oliver-->>Daisy: Hoot hoot! Lead the way!
+
+        par Everyone sets off together
+            Biscuit->>Biscuit: Wags tail with excitement
+            Maple->>Maple: Purrs contentedly
+            Pebble->>Pebble: Stuffs cheeks with snacks for the journey
+        end
+
+        Biscuit-->>Daisy: This is the best day ever!
+        Daisy-->>Biscuit: Every day with friends is the best day ever!
+    end`,
 
   gantt: `gantt
-    title A Gantt Diagram
+    title 🌿 Woodland Animal Friendship Festival
     dateFormat  YYYY-MM-DD
-    section Section
-    A task           :a1, 2024-01-01, 30d
-    Another task     :after a1, 20d
-    section Another
-    Task in sec      :2024-01-12, 12d
-    another task     :24d`,
+    section 🐿️ Squirrel Preparations
+    Collect acorn decorations     :a1, 2024-06-01, 5d
+    Bake acorn cookies            :a2, after a1, 3d
+    section 🦊 Fox Arrangements
+    Send invitations to burrows   :b1, 2024-06-01, 2d
+    Set up the meadow stage       :b2, after b1, 4d
+    Rehearse welcome song         :b3, after b2, 3d
+    section 🦔 Hedgehog Catering
+    Pick wild berries             :c1, 2024-06-03, 3d
+    Prepare berry jam jars        :c2, after c1, 2d
+    Arrange picnic blankets       :c3, after c2, 2d
+    section 🎉 Festival Day
+    Friends arrive at meadow      :milestone, 2024-06-13, 0d
+    Big group hug                 :d1, 2024-06-13, 1d
+    Feast and dancing             :d2, after d1, 1d`,
 
   class: `classDiagram
-    Animal <|-- Duck
-    Animal <|-- Fish
-    Animal <|-- Zebra
+    Animal <|-- Dog
+    Animal <|-- Cat
+    Animal <|-- Rabbit
+    Animal <|-- Hamster
+
+    Animal : +String name
     Animal : +int age
-    Animal : +String gender
-    Animal: +isMammal()
-    Animal: +mate()
-    class Duck{
-        +String beakColor
-        +swim()
-        +quack()
+    Animal : +String favouriteSnack
+    Animal : +makeSound()
+    Animal : +cuddle()
+
+    class Dog{
+        +String breed
+        +bool lovesWalks
+        +fetch()
+        +wagTail()
+    }
+    class Cat{
+        +String furPattern
+        +bool indoorCat
+        +purr()
+        +knockThingsOver()
+    }
+    class Rabbit{
+        +String earLength
+        +bool lovesHay
+        +binky()
+        +twitchNose()
+    }
+    class Hamster{
+        +int wheelSpinsPerDay
+        +bool hasPouch
+        +stuffCheeks()
+        +burrow()
     }`,
 
   state: `stateDiagram-v2
-    [*] --> Still
-    Still --> [*]
-    Still --> Moving
-    Moving --> Still
-    Moving --> Crash
-    Crash --> [*]`,
+    [*] --> Sleeping : Day begins
+    Sleeping --> Stretching : Alarm goes off
+    Stretching --> Hungry : Fully awake
+    Hungry --> Eating : Found snacks
+    Eating --> Happy : Tummy full
+    Happy --> Playing : Full of energy
+    Playing --> Tired : Had so much fun
+    Tired --> Cuddling : Needs comfort
+    Cuddling --> Sleeping : Feeling cozy
+    Happy --> Cuddling : Wants affection
+    Eating --> Sleeping : Food coma
+
+    note right of Happy : This is the best state 🐾`,
 
   er: `erDiagram
-    CUSTOMER ||--o{ ORDER : places
-    ORDER ||--|{ LINE-ITEM : contains
-    CUSTOMER }|..|{ DELIVERY-ADDRESS : uses`
+    ANIMAL {
+        string name
+        string species
+        int age
+        string favouriteSnack
+    }
+    SHELTER {
+        string shelterName
+        string location
+        int capacity
+    }
+    VOLUNTEER {
+        string volunteerName
+        string phone
+        string schedule
+    }
+    ADOPTION {
+        date adoptionDate
+        string status
+    }
+    FAMILY {
+        string familyName
+        string homeType
+        bool hasGarden
+    }
+
+    SHELTER ||--o{ ANIMAL : cares for
+    VOLUNTEER }o--|| SHELTER : works at
+    VOLUNTEER }o--o{ ANIMAL : looks after
+    ANIMAL ||--o| ADOPTION : leads to
+    FAMILY ||--o{ ADOPTION : completes
+    FAMILY ||--o{ ANIMAL : adopts`
 };
 
 // ===========================
