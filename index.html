@@ -35,11 +35,17 @@
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "NoFussDiagram",
+  "alternateName": "No Fuss Diagram",
   "url": "https://steammomo.github.io/nofussdiagram/",
-  "description": "Free online Mermaid.js diagram editor with live preview, pan & zoom, PNG/SVG export, and sequence diagram participant pinning.",
+  "description": "Free online Mermaid.js diagram editor with live preview, pan & zoom, PNG/SVG export, and sequence diagram participant pinning. No install, no login required.",
   "applicationCategory": "DeveloperApplication",
+  "applicationSubCategory": "DiagramEditor",
   "operatingSystem": "Any",
   "browserRequirements": "Requires JavaScript",
+  "inLanguage": "en",
+  "isAccessibleForFree": true,
+  "softwareVersion": "1.0",
+  "keywords": "mermaid diagram editor, mermaid.js online, flowchart maker, sequence diagram tool, free diagram editor, mermaid live editor, gantt chart maker, online UML editor, ER diagram tool, class diagram online",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -49,14 +55,71 @@
     "Live Mermaid.js diagram rendering",
     "Pan and zoom preview",
     "Export to PNG and SVG",
+    "Copy SVG code to clipboard",
+    "Copy Mermaid markdown",
     "Sequence diagram participant pinning",
-    "Flowchart, Gantt, ER, Class, State diagram support",
-    "No login required"
+    "Flowchart diagram support",
+    "Sequence diagram support",
+    "Gantt chart support",
+    "ER diagram support",
+    "Class diagram support",
+    "State diagram support",
+    "Light and dark diagram themes",
+    "Fullscreen preview mode",
+    "Built-in diagram templates",
+    "No login required",
+    "No installation needed"
   ],
   "creator": {
     "@type": "Person",
     "name": "SteamMomo"
+  },
+  "potentialAction": {
+    "@type": "UseAction",
+    "target": "https://steammomo.github.io/nofussdiagram/"
   }
+}
+</script>
+
+<!-- ===== FAQ STRUCTURED DATA ===== -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is NoFussDiagram?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "NoFussDiagram is a free online Mermaid.js diagram editor. You write Mermaid syntax and instantly see your diagram rendered with live preview. No login, no installation — works entirely in your browser."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What diagram types does NoFussDiagram support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "NoFussDiagram supports all major Mermaid.js diagram types: flowcharts, sequence diagrams, Gantt charts, ER diagrams, class diagrams, and state diagrams."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I export diagrams to PNG or SVG?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. NoFussDiagram lets you export your diagram as a PNG image or copy the SVG code directly. You can also copy the raw Mermaid markdown."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is NoFussDiagram free to use?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, NoFussDiagram is completely free. No account or login is required. Just open the site and start diagramming."
+      }
+    }
+  ]
 }
 </script>
 
@@ -68,6 +131,8 @@
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
 <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" as="script" />
+<link rel="preload" href="https://cdn.tailwindcss.com" as="script" />
 
 <!-- ===== THEME / PWA ===== -->
 <meta name="theme-color" content="#080808" />
@@ -209,14 +274,14 @@
   }
 
   #footer {
-    min-height: 60px;
     border-top: 1px solid var(--border);
     background: var(--surface);
     display: flex;
-    align-items: center;
+    flex-direction: column;
     justify-content: center;
-    padding: 8px 16px;
+    padding: 6px 0;
     flex-shrink: 0;
+    gap: 0;
   }
 
   /* ===== EDITOR ===== */
@@ -236,17 +301,38 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    display: flex;
+  }
+
+  #line-numbers {
+    flex-shrink: 0;
+    width: 42px;
+    overflow: hidden;
+    background: var(--editor-bg);
+    padding: 16px 6px 16px 0;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #383838;
+    user-select: none;
+    pointer-events: none;
+    border-right: 1px solid #1a1a1a;
+  }
+
+  #line-numbers span {
+    display: block;
   }
 
   #editor {
-    width: 100%;
+    flex: 1;
     height: 100%;
     resize: none;
     background: var(--editor-bg);
     color: var(--editor-text);
     border: none;
     outline: none;
-    padding: 16px;
+    padding: 16px 16px 16px 12px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     line-height: 1.7;
@@ -257,18 +343,6 @@
 
   #editor::selection {
     background: rgba(168,85,247,0.25);
-  }
-
-  /* Line numbers gutter effect */
-  #editor-wrap::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: linear-gradient(to bottom, var(--accent-dim), transparent 60%);
-    opacity: 0.4;
   }
 
   #editor-controls {
@@ -781,11 +855,85 @@
     100% { opacity: 0; }
   }
 
+  #faq-section details[open] .faq-chevron { transform: rotate(180deg); }
+  #faq-section details summary::-webkit-details-marker { display: none; }
+  .faq-chevron { transition: transform 0.15s; flex-shrink: 0; }
+
   body.fullscreen-active #fs-exit-btn { display: flex; }
   body.fullscreen-active #fs-hint { display: block; }
+  body.fullscreen-active #fs-zoom-controls { display: flex; }
+
+  #fs-zoom-controls {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: rgba(15,15,15,0.9);
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 4px 6px;
+    align-items: center;
+    gap: 2px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  }
+
+  .fs-zoom-btn {
+    background: none;
+    border: none;
+    color: #a3a3a3;
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    transition: background 0.1s, color 0.1s;
+  }
+  .fs-zoom-btn:hover { background: rgba(255,255,255,0.07); color: #e8e8e8; }
+
+  #fs-zoom-label {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #a3a3a3;
+    min-width: 38px;
+    text-align: center;
+    user-select: none;
+  }
 </style>
 </head>
 <body>
+
+<!-- For search engines / no-JS crawlers -->
+<noscript>
+  <div style="max-width:720px;margin:40px auto;padding:20px;font-family:sans-serif;line-height:1.6">
+    <h1>NoFussDiagram — Free Online Mermaid Diagram Editor</h1>
+    <p>NoFussDiagram is a free, browser-based Mermaid.js diagram editor. Write Mermaid syntax and see your diagram render in real time. No login or installation required.</p>
+    <h2>Supported Diagram Types</h2>
+    <ul>
+      <li>Flowchart</li>
+      <li>Sequence Diagram</li>
+      <li>Gantt Chart</li>
+      <li>ER Diagram</li>
+      <li>Class Diagram</li>
+      <li>State Diagram</li>
+    </ul>
+    <h2>Features</h2>
+    <ul>
+      <li>Live Mermaid.js rendering in the browser</li>
+      <li>Pan and zoom diagram preview</li>
+      <li>Export diagrams to PNG or SVG</li>
+      <li>Copy Mermaid markdown or SVG code</li>
+      <li>Light and dark diagram themes</li>
+      <li>Sequence diagram participant pinning</li>
+      <li>Built-in templates for all diagram types</li>
+      <li>Fullscreen preview mode</li>
+      <li>Completely free — no account required</li>
+    </ul>
+    <p>Please enable JavaScript to use NoFussDiagram.</p>
+  </div>
+</noscript>
 
 <div id="app">
 
@@ -796,10 +944,10 @@
         <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.5-7.5-2 2M7.5 16.5l-2 2m0-14 2 2m9 9 2 2"/>
       </svg>
     </div>
-    <div>
+    <h1 style="margin:0;display:flex;align-items:center;gap:0;font-size:inherit;font-weight:inherit;line-height:inherit;">
       <span style="font-weight:700;font-size:14px;letter-spacing:-0.02em;">NoFussDiagram</span>
       <span style="color:#3d3d3d;font-size:13px;margin-left:6px;font-weight:400;">Mermaid Editor</span>
-    </div>
+    </h1>
     <div style="flex:1"></div>
     <!-- Keyboard hint -->
     <div style="color:#3d3d3d;font-size:11px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:8px;" class="hidden sm:flex">
@@ -821,10 +969,10 @@
   </div>
 
   <!-- ===== MAIN ===== -->
-  <main id="main">
+  <main id="main" aria-label="Mermaid diagram editor">
 
     <!-- LEFT PANE -->
-    <div id="left-pane" class="mobile-active">
+    <div id="left-pane" class="mobile-active" aria-label="Diagram code editor">
 
       <!-- Editor toolbar -->
       <div id="editor-toolbar">
@@ -847,6 +995,7 @@
 
       <!-- Editor area -->
       <div id="editor-wrap">
+        <div id="line-numbers"></div>
         <textarea id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
           placeholder="Write your Mermaid diagram syntax here…&#10;&#10;Example:&#10;graph TD&#10;    A[Start] --> B[End]"
         ></textarea>
@@ -862,7 +1011,7 @@
         <!-- Tip banner -->
         <div id="tip-banner" style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;background:rgba(234,179,8,0.07);border:1px solid rgba(234,179,8,0.2);font-size:11px;color:#a3a3a3;line-height:1.5;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span>If text is hard to see, try a different template or adjust your diagram's colors.</span>
+          <span>If text is not visible, try toggling the diagram theme (Light/Dark button) or load a different template.</span>
           <button onclick="document.getElementById('tip-banner').style.display='none'" style="background:none;border:none;color:#525252;cursor:pointer;padding:0;flex-shrink:0;line-height:1;font-size:14px;margin-left:auto;" title="Dismiss">×</button>
         </div>
 
@@ -880,7 +1029,7 @@
     </div>
 
     <!-- RIGHT PANE -->
-    <div id="right-pane">
+    <div id="right-pane" aria-label="Diagram preview">
 
       <!-- Preview toolbar -->
       <div id="preview-toolbar">
@@ -910,9 +1059,9 @@
 
         <!-- Diagram theme toggle -->
         <button class="btn" id="diagram-theme-btn" onclick="toggleDiagramTheme()" title="Toggle diagram light/dark theme">
-          <svg id="diag-icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <svg id="diag-icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          <span id="diag-theme-label">Dark</span>
+          <svg id="diag-icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg id="diag-icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <span id="diag-theme-label">Light</span>
         </button>
 
         <div class="divider"></div>
@@ -947,27 +1096,99 @@
         <div id="zoom-badge">100%</div>
         <!-- Sticky participant header (sequence diagrams only) -->
         <div id="participant-overlay"></div>
-      </div>
 
-      <!-- Fullscreen overlay controls -->
-      <button id="fs-exit-btn" onclick="toggleFullscreen()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><line x1="9" y1="7" x2="15" y2="13"/><line x1="15" y1="7" x2="9" y2="13"/></svg>
-        Exit Fullscreen
-        <span style="border:1px solid #2a2a2a;padding:1px 5px;border-radius:3px;font-size:10px;opacity:0.6;font-family:'JetBrains Mono',monospace;">Esc</span>
-      </button>
-      <div id="fs-hint">Press Esc or F to exit fullscreen</div>
+        <!-- Fullscreen overlay controls (inside preview-wrap so they appear in native fullscreen) -->
+        <button id="fs-exit-btn" onclick="toggleFullscreen()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><line x1="9" y1="7" x2="15" y2="13"/><line x1="15" y1="7" x2="9" y2="13"/></svg>
+          Exit Fullscreen
+          <span style="border:1px solid #2a2a2a;padding:1px 5px;border-radius:3px;font-size:10px;opacity:0.6;font-family:'JetBrains Mono',monospace;">Esc</span>
+        </button>
+        <div id="fs-zoom-controls">
+          <button class="fs-zoom-btn" onclick="zoomIn()" title="Zoom In">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
+          <span id="fs-zoom-label">100%</span>
+          <button class="fs-zoom-btn" onclick="zoomOut()" title="Zoom Out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
+          <button class="fs-zoom-btn" onclick="resetZoom()" title="Reset Zoom">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+        </div>
+        <div id="fs-hint">Press Esc or F to exit fullscreen</div>
+      </div>
 
     </div>
   </main>
 
-  <!-- ===== FOOTER (Ad Slot 1) ===== -->
-  <footer id="footer">
-    <div class="ad-slot" style="width:100%;max-width:728px;height:44px;flex-direction:row;gap:10px;">
-      <div class="ad-slot-label" style="flex-direction:row;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-        <span>Advertisement — 728 × 90</span>
+  <!-- ===== FOOTER ===== -->
+  <footer id="footer" style="flex-direction:column;align-items:stretch;padding:0;gap:0;">
+    <!-- SEO text row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 16px 0;gap:12px;flex-wrap:wrap;">
+      <p style="margin:0;font-size:11px;color:#525252;line-height:1.4;">
+        <strong style="color:#3d3d3d;font-weight:600;">NoFussDiagram</strong> — free online
+        <a href="https://steammomo.github.io/nofussdiagram/" style="color:#525252;text-decoration:none;">Mermaid.js diagram editor</a>.
+        Supports flowcharts, sequence diagrams, Gantt charts, ER diagrams, class &amp; state diagrams.
+        Export to PNG or SVG. No login required.
+      </p>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;">
+        <nav aria-label="Diagram types" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:10px;color:#3d3d3d;padding:2px 7px;border:1px solid #1f1f1f;border-radius:4px;">Flowchart</span>
+          <span style="font-size:10px;color:#3d3d3d;padding:2px 7px;border:1px solid #1f1f1f;border-radius:4px;">Sequence</span>
+          <span style="font-size:10px;color:#3d3d3d;padding:2px 7px;border:1px solid #1f1f1f;border-radius:4px;">Gantt</span>
+          <span style="font-size:10px;color:#3d3d3d;padding:2px 7px;border:1px solid #1f1f1f;border-radius:4px;">ER</span>
+          <span style="font-size:10px;color:#3d3d3d;padding:2px 7px;border:1px solid #1f1f1f;border-radius:4px;">Class</span>
+          <span style="font-size:10px;color:#3d3d3d;padding:2px 7px;border:1px solid #1f1f1f;border-radius:4px;">State</span>
+        </nav>
+        <button onclick="toggleFAQ()" id="faq-toggle-btn" style="background:none;border:1px solid #1f1f1f;border-radius:4px;color:#525252;font-size:10px;padding:2px 8px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;gap:4px;transition:border-color 0.1s,color 0.1s;" title="Toggle FAQ">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="faq-btn-chevron" style="transition:transform 0.15s"><polyline points="6 9 12 15 18 9"/></svg>
+          FAQ
+        </button>
       </div>
-      <!-- INSERT ADSENSE CODE HERE -->
+    </div>
+    <!-- FAQ row -->
+    <div id="faq-section" style="display:none;padding:8px 16px 4px;border-top:1px solid #1f1f1f;">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;max-width:900px;">
+        <details style="flex:1;min-width:200px;">
+          <summary style="font-size:11px;color:#525252;cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px;user-select:none;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="faq-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            What is NoFussDiagram?
+          </summary>
+          <p style="margin:4px 0 0 15px;font-size:11px;color:#3d3d3d;line-height:1.5;">A free browser-based Mermaid.js editor. Write diagram syntax, see it render live. No login or install needed.</p>
+        </details>
+        <details style="flex:1;min-width:200px;">
+          <summary style="font-size:11px;color:#525252;cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px;user-select:none;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="faq-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            What diagram types are supported?
+          </summary>
+          <p style="margin:4px 0 0 15px;font-size:11px;color:#3d3d3d;line-height:1.5;">Flowchart, Sequence, Gantt, ER, Class, and State diagrams via Mermaid.js syntax.</p>
+        </details>
+        <details style="flex:1;min-width:200px;">
+          <summary style="font-size:11px;color:#525252;cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px;user-select:none;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="faq-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            Can I export to PNG or SVG?
+          </summary>
+          <p style="margin:4px 0 0 15px;font-size:11px;color:#3d3d3d;line-height:1.5;">Yes — click PNG to download or SVG to copy the code. You can also copy the raw Mermaid markdown.</p>
+        </details>
+        <details style="flex:1;min-width:200px;">
+          <summary style="font-size:11px;color:#525252;cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px;user-select:none;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="faq-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            Is it free?
+          </summary>
+          <p style="margin:4px 0 0 15px;font-size:11px;color:#3d3d3d;line-height:1.5;">Completely free. No account, no sign-up, no usage limits.</p>
+        </details>
+      </div>
+    </div>
+
+    <!-- Ad row -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:4px 16px;">
+      <div class="ad-slot" style="width:100%;max-width:728px;height:36px;flex-direction:row;gap:10px;">
+        <div class="ad-slot-label" style="flex-direction:row;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <span>Advertisement — 728 × 90</span>
+        </div>
+        <!-- INSERT ADSENSE CODE HERE -->
+      </div>
     </div>
   </footer>
 
@@ -1151,16 +1372,25 @@ let debounceTimer = null;
 let isSequenceDiagram = false;
 let sequenceParticipants = []; // [{ name, el }]
 let overlayRafId = null;
-let diagramTheme = 'default'; // 'default' (light) | 'dark'
+let diagramTheme = 'dark'; // 'default' (light) | 'dark'
 
 // ===========================
 // INIT MERMAID
 // ===========================
 mermaid.initialize({
   startOnLoad: false,
-  theme: 'default',
+  theme: diagramTheme,
   securityLevel: 'loose',
   fontFamily: 'JetBrains Mono, monospace',
+  themeVariables: {
+    background: 'transparent',
+    mainBkg: '#1a1a2e',
+    nodeBorder: '#7c3aed',
+    clusterBkg: '#0f0f1a',
+    titleColor: '#e8e8e8',
+    edgeLabelBackground: '#0f0f0f',
+    lineColor: '#a855f7',
+  }
 });
 
 // ===========================
@@ -1253,7 +1483,9 @@ function initPanZoom() {
 }
 
 function updateZoomBadge(zoom) {
-  document.getElementById('zoom-badge').textContent = Math.round(zoom * 100) + '%';
+  const label = Math.round(zoom * 100) + '%';
+  document.getElementById('zoom-badge').textContent = label;
+  document.getElementById('fs-zoom-label').textContent = label;
 }
 
 // ===========================
@@ -1497,7 +1729,9 @@ function loadTemplate(key) {
   if (!key) return;
   const tmpl = TEMPLATES[key];
   if (tmpl) {
-    document.getElementById('editor').value = tmpl;
+    const ed = document.getElementById('editor');
+    ed.value = tmpl;
+    ed.dispatchEvent(new Event('input'));
     renderDiagram();
     document.getElementById('template-select').value = '';
   }
@@ -1656,6 +1890,38 @@ document.getElementById('editor').addEventListener('input', () => {
   debounceTimer = setTimeout(renderDiagram, 300);
 });
 
+// LINE NUMBERS
+// ===========================
+(function () {
+  const editor = document.getElementById('editor');
+  const gutter = document.getElementById('line-numbers');
+
+  function updateLineNumbers() {
+    const lineCount = editor.value.split('\n').length;
+    const current = gutter.children.length;
+    if (lineCount === current) return;
+    if (lineCount > current) {
+      const frag = document.createDocumentFragment();
+      for (let i = current + 1; i <= lineCount; i++) {
+        const s = document.createElement('span');
+        s.textContent = i;
+        frag.appendChild(s);
+      }
+      gutter.appendChild(frag);
+    } else {
+      while (gutter.children.length > lineCount) gutter.lastChild.remove();
+    }
+  }
+
+  function syncScroll() {
+    gutter.scrollTop = editor.scrollTop;
+  }
+
+  editor.addEventListener('input', updateLineNumbers);
+  editor.addEventListener('scroll', syncScroll);
+  updateLineNumbers();
+})();
+
 // Ctrl+Enter to force render
 document.getElementById('editor').addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -1671,11 +1937,22 @@ document.getElementById('editor').addEventListener('keydown', (e) => {
     const end = ta.selectionEnd;
     ta.value = ta.value.substring(0, start) + '    ' + ta.value.substring(end);
     ta.selectionStart = ta.selectionEnd = start + 4;
+    ta.dispatchEvent(new Event('input'));
   }
 });
 
 // Window resize — re-fit
 // ===========================
+// FAQ TOGGLE
+// ===========================
+function toggleFAQ() {
+  const faq = document.getElementById('faq-section');
+  const chevron = document.getElementById('faq-btn-chevron');
+  const open = faq.style.display === 'block';
+  faq.style.display = open ? 'none' : 'block';
+  chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
+
 // FULLSCREEN
 // ===========================
 let isFullscreen = false;
@@ -1687,7 +1964,7 @@ function toggleFullscreen() {
   if (!isFullscreen) {
     const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen || wrap.mozRequestFullScreen;
     if (req) {
-      req.call(wrap).catch(() => enableCSSFullscreen(wrap));
+      req.call(wrap).then(() => setFullscreenState(true)).catch(() => enableCSSFullscreen(wrap));
     } else {
       enableCSSFullscreen(wrap);
     }
@@ -1769,9 +2046,10 @@ window.addEventListener('resize', () => {
 // BOOT WITH FLOWCHART
 // ===========================
 window.addEventListener('load', () => {
-  // Default to light diagram theme
-  document.getElementById('preview-wrap').classList.add('diagram-light');
-  document.getElementById('editor').value = TEMPLATES.flowchart;
+  const editor = document.getElementById('editor');
+  editor.value = TEMPLATES.flowchart;
+  // Sync line numbers with initial template content
+  editor.dispatchEvent(new Event('input'));
   renderDiagram();
 });
 </script>
